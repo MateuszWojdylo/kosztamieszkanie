@@ -1,955 +1,730 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Budżet Remontowy">
-    <title>Budżet Remontowy — Kalkulator Wydatków</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
-            -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Budżet Remontowy</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
 
-        /* Zapobiega automatycznemu przybliżaniu ekranu (auto-zoom) na iOS/iPhone podczas pisania */
-        input, select, textarea {
-            font-size: 16px !important;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-        /* Płynna animacja dodawania wiersza */
-        @keyframes fadeInSlide {
-            from {
-                opacity: 0;
-                transform: translateY(-6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .expense-row-enter {
-            animation: fadeInSlide 0.22s ease-out forwards;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 60px;
+    }
 
-        /* Ukrycie paska przewijania dla szybkich tagów kategorii na telefonie */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-    </style>
+    /* Przyklejony nagłówek z łącznym kosztem w prawym górnym rogu */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+    }
+
+    .topbar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 3px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+      width: fit-content;
+      transition: all 0.2s;
+    }
+
+    .sync-badge:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+    }
+
+    .dot.online {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .dot.error {
+      background: var(--danger);
+    }
+
+    .total-box {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      padding: 8px 14px;
+      border-radius: 12px;
+      text-align: right;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+      flex-shrink: 0;
+    }
+
+    .total-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.85);
+      display: block;
+    }
+
+    .total-amount {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 20px auto 0;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Formularz dodawania */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 640px) {
+      .form-grid {
+        grid-template-columns: 2fr 1fr auto;
+        align-items: end;
+      }
+      .brand h1 {
+        font-size: 1.35rem;
+      }
+      .total-amount {
+        font-size: 1.5rem;
+      }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 16px; /* Zapobiega przybliżaniu ekranu na iPhone */
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus {
+      border-color: var(--accent);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover, .chip:active {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 22px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, opacity 0.2s;
+      height: 45px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary:hover {
+      background: #7dd3fc;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    /* Pasek narzędzi nad tabelą */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 180px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+    }
+
+    /* Tabela wydatków */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 8px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+      font-size: 0.92rem;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .expense-title {
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .expense-date {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .expense-amount {
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .btn-delete {
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .btn-delete:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
-<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 selection:bg-amber-500 selection:text-white pb-10">
+<body>
 
-    <!-- Sticky Header: Nazwa aplikacji po lewej, Łączny koszt zawsze w prawym górnym rogu -->
-    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-sm">
-        <div class="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
-            
-            <!-- Lewa strona: Logo i tytuł aplikacji -->
-            <div class="flex items-center gap-2 sm:gap-3.5 min-w-0">
-                <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                </div>
-                <div class="min-w-0">
-                    <div class="flex items-center gap-1.5">
-                        <h1 class="text-sm sm:text-xl md:text-2xl font-extrabold tracking-tight text-slate-900 leading-tight truncate">
-                            Budżet Remontowy
-                        </h1>
-                        <span id="syncStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                            <span id="syncStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span id="syncStatusText" class="hidden xs:inline sm:inline">Zapisano</span>
-                        </span>
-                    </div>
-                    <p class="text-[11px] sm:text-xs text-slate-500 truncate">
-                        Wydatki na remont mieszkania
-                    </p>
-                </div>
-            </div>
-
-            <!-- Prawa strona (Prawy górny róg): Wyraźny boks z Łącznym kosztem -->
-            <div class="bg-slate-900 text-white rounded-2xl px-3 py-1.5 sm:px-5 sm:py-2.5 shadow-md shadow-slate-900/15 border border-slate-800 flex items-center gap-2.5 shrink-0">
-                <div class="text-right">
-                    <span class="block text-[9px] sm:text-[11px] uppercase tracking-wider font-bold text-amber-400 leading-none">
-                        Łączny koszt
-                    </span>
-                    <div id="totalCostDisplay" class="text-sm sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white tabular-nums leading-tight mt-0.5 transition-transform duration-200 whitespace-nowrap">
-                        0,00 zł
-                    </div>
-                </div>
-                <div class="hidden sm:flex w-9 h-9 rounded-xl bg-white/10 items-center justify-center text-amber-400 shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-            </div>
-
-        </div>
-    </header>
-
-    <!-- Główny kontener aplikacji -->
-    <main class="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-
-        <!-- Sekcja 1: Formularz dodawania wydatku -->
-        <section aria-labelledby="add-expense-heading" class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-3.5 sm:p-6">
-            <div class="flex items-center justify-between gap-2 mb-3">
-                <h2 id="add-expense-heading" class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                    </span>
-                    <span id="formHeadingText">Nowy wydatek remontowy</span>
-                </h2>
-                <button
-                    type="button"
-                    id="cancelEditBtn"
-                    class="hidden text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
-                >
-                    Anuluj edycję
-                </button>
-            </div>
-
-            <!-- Szybkie podpowiedzi kategorii (wygodne do kliknięcia kciukiem na telefonie) -->
-            <div class="mb-3.5">
-                <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Szybki wybór tytułu (dotknij, aby uzupełnić):
-                </span>
-                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-                    <button type="button" data-quick-title="Panele podłogowe" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Panele podłogowe
-                    </button>
-                    <button type="button" data-quick-title="Farba i grunt" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Farba i grunt
-                    </button>
-                    <button type="button" data-quick-title="Listwy przypodłogowe" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Listwy przypodłogowe
-                    </button>
-                    <button type="button" data-quick-title="Płytki i klej" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Płytki i klej
-                    </button>
-                    <button type="button" data-quick-title="Gładzie i gips" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Gładzie i gips
-                    </button>
-                    <button type="button" data-quick-title="Robocizna" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Robocizna
-                    </button>
-                    <button type="button" data-quick-title="Hydraulika" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Hydraulika
-                    </button>
-                    <button type="button" data-quick-title="Elektryka i oświetlenie" class="quick-chip shrink-0 text-xs px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 active:bg-amber-100 hover:text-amber-800 text-slate-700 font-semibold transition-colors cursor-pointer">
-                        + Elektryka
-                    </button>
-                </div>
-            </div>
-
-            <!-- Formularz z polami Tytuł wydatku, Kwota oraz przyciskiem Dodaj -->
-            <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-start" novalidate>
-                
-                <!-- Pole: Tytuł wydatku -->
-                <div class="md:col-span-6">
-                    <label for="expenseTitle" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Tytuł wydatku <span class="text-rose-500">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        id="expenseTitle"
-                        name="expenseTitle"
-                        placeholder="np. Panele podłogowe, Farba..."
-                        autocomplete="off"
-                        enterkeyhint="next"
-                        maxlength="120"
-                        required
-                        class="w-full min-h-[48px] rounded-xl border border-slate-300 bg-slate-50/70 px-3.5 py-3 text-base text-slate-900 placeholder-slate-400 focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 focus:outline-none transition-all"
-                    />
-                </div>
-
-                <!-- Pole: Wartość / Kwota (zł) z klawiaturą numeryczną na telefonie -->
-                <div class="md:col-span-4">
-                    <label for="expenseAmount" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Wartość / Kwota (zł) <span class="text-rose-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input
-                            type="text"
-                            inputmode="decimal"
-                            enterkeyhint="done"
-                            id="expenseAmount"
-                            name="expenseAmount"
-                            placeholder="np. 249,99"
-                            autocomplete="off"
-                            required
-                            class="w-full min-h-[48px] rounded-xl border border-slate-300 bg-slate-50/70 pl-3.5 pr-12 py-3 text-base font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 focus:outline-none transition-all tabular-nums"
-                        />
-                        <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-sm font-bold text-slate-400 pointer-events-none">
-                            zł
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Przycisk zatwierdzający: Dodaj (min. 48px wysokości) -->
-                <div class="md:col-span-2 flex flex-col justify-end h-full pt-0.5 md:pt-0">
-                    <label class="hidden md:block text-xs font-bold uppercase tracking-wider text-transparent mb-1.5 select-none">
-                        Akcja
-                    </label>
-                    <button
-                        type="submit"
-                        id="submitExpenseBtn"
-                        class="w-full min-h-[48px] rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold py-3 px-5 shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 focus:outline-none focus:ring-4 focus:ring-amber-500/30 transition-all flex items-center justify-center gap-2 text-base cursor-pointer select-none"
-                    >
-                        <svg id="submitBtnIcon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span id="submitBtnText">Dodaj</span>
-                    </button>
-                </div>
-            </form>
-
-            <!-- Powiadomienie walidacyjne lub potwierdzające (zamiast okienka alert) -->
-            <div id="formFeedback" class="hidden mt-3.5 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium flex items-center justify-between gap-2">
-                <span id="formFeedbackText"></span>
-                <button type="button" id="closeFeedbackBtn" class="text-current opacity-70 hover:opacity-100 p-1 cursor-pointer" aria-label="Zamknij komunikat">
-                    ✕
-                </button>
-            </div>
-        </section>
-
-        <!-- Sekcja 2: Tabelka z wydatkami poniżej formularza -->
-        <section aria-labelledby="expenses-table-heading" class="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
-            
-            <!-- Pasek narzędzi tabeli: Tytuł, licznik pozycji, wyszukiwarka i sortowanie -->
-            <div class="p-3.5 sm:p-6 border-b border-slate-100 space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                    <div>
-                        <h2 id="expenses-table-heading" class="text-sm sm:text-lg font-bold text-slate-900">
-                            Lista poniesionych wydatków
-                        </h2>
-                        <p class="text-[11px] sm:text-xs text-slate-500">
-                            Nazwa, kwota oraz dokładna data dodania każdego wydatku
-                        </p>
-                    </div>
-                    <span id="entryCounterPill" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 tabular-nums shrink-0">
-                        0 pozycji
-                    </span>
-                </div>
-
-                <!-- Wyszukiwarka i sortowanie -->
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                    <div class="relative sm:col-span-7">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="search"
-                            id="searchInput"
-                            placeholder="Szukaj wydatku po nazwie..."
-                            class="w-full min-h-[44px] pl-9 pr-3.5 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 focus:outline-none transition-all"
-                        />
-                    </div>
-
-                    <div class="sm:col-span-5">
-                        <select
-                            id="sortSelect"
-                            aria-label="Sortowanie wydatków"
-                            class="w-full min-h-[44px] py-2 pl-3 pr-8 text-sm rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:bg-white focus:border-amber-500 focus:outline-none transition-all cursor-pointer"
-                        >
-                            <option value="date-desc">Sortuj: Najnowsze na górze</option>
-                            <option value="date-asc">Sortuj: Najstarsze na górze</option>
-                            <option value="amount-desc">Sortuj: Kwota (od najwyższej)</option>
-                            <option value="amount-asc">Sortuj: Kwota (od najniższej)</option>
-                            <option value="title-asc">Sortuj: Nazwa (A → Z)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabelka wydatków: Mieści wszystkie kolumny (Nazwa, Kwota, Data dodania, Usuń) na ekranie telefonu bez przewijania w bok -->
-            <div class="w-full">
-                <table class="w-full text-left border-collapse table-fixed">
-                    <thead>
-                        <tr class="bg-slate-50/95 border-b border-slate-200 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
-                            <th scope="col" class="hidden sm:table-cell py-3.5 pl-5 pr-2 w-12 text-center">Lp.</th>
-                            <th scope="col" class="py-2.5 pl-3 pr-1.5 sm:py-3.5 sm:px-4 w-[38%] sm:w-[38%]">Nazwa wydatku</th>
-                            <th scope="col" class="py-2.5 px-1.5 sm:py-3.5 sm:px-4 text-right w-[25%] sm:w-[22%]">Kwota</th>
-                            <th scope="col" class="py-2.5 px-1.5 sm:py-3.5 sm:px-4 text-center w-[23%] sm:w-[22%]">Data dodania</th>
-                            <th scope="col" class="py-2.5 pl-1 pr-2.5 sm:py-3.5 sm:pl-2 sm:pr-5 text-right w-[14%] sm:w-28">Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody id="expensesTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
-                        <!-- Wiersze generowane dynamicznie w JS -->
-                    </tbody>
-                    <tfoot id="expensesTableFooter" class="hidden bg-slate-50/95 border-t-2 border-slate-200 font-bold text-slate-900">
-                        <tr>
-                            <td class="hidden sm:table-cell py-3.5 pl-5"></td>
-                            <td class="py-3 pl-3 pr-1.5 sm:py-3.5 sm:px-4 text-right text-[11px] sm:text-sm uppercase tracking-wider text-slate-600">
-                                Suma w tabeli:
-                            </td>
-                            <td id="tableFooterTotal" class="py-3 px-1.5 sm:py-3.5 sm:px-4 text-right text-xs sm:text-lg text-amber-600 font-extrabold tabular-nums whitespace-nowrap">
-                                0,00 zł
-                            </td>
-                            <td class="py-3 px-1.5 sm:py-3.5 sm:px-4"></td>
-                            <td class="py-3 pr-2.5 sm:py-3.5 sm:pr-5"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <!-- Stan pusty (gdy brak wydatków) -->
-            <div id="emptyState" class="py-10 sm:py-12 px-4 text-center">
-                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-3 border border-amber-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <h3 id="emptyStateTitle" class="text-sm sm:text-base font-bold text-slate-800">Brak zapisanych wydatków</h3>
-                <p id="emptyStateDesc" class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mt-1">
-                    Wpisz powyżej tytuł wydatku oraz kwotę i naciśnij przycisk <strong>Dodaj</strong>, aby utworzyć pierwszy wpis w tabeli.
-                </p>
-            </div>
-        </section>
-
-        <!-- Sekcja 3: Szybkie statystyki budżetu -->
-        <section class="grid grid-cols-3 gap-2 sm:gap-4">
-            <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-sm">
-                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 truncate">Liczba wydatków</span>
-                <p id="statCount" class="text-sm sm:text-xl font-extrabold text-slate-900 mt-0.5 tabular-nums">0</p>
-            </div>
-
-            <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-sm">
-                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 truncate">Średni wydatek</span>
-                <p id="statAverage" class="text-sm sm:text-xl font-extrabold text-slate-900 mt-0.5 tabular-nums truncate">0,00 zł</p>
-            </div>
-
-            <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-sm">
-                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 truncate">Największy koszt</span>
-                <p id="statHighest" class="text-sm sm:text-xl font-extrabold text-slate-900 mt-0.5 tabular-nums truncate">0,00 zł</p>
-            </div>
-        </section>
-
-        <!-- Sekcja 4: Eksport do pliku CSV (Excel) -->
-        <section class="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-                <h3 class="text-xs sm:text-sm font-bold text-slate-800">Eksport zestawienia wydatków</h3>
-                <p class="text-[11px] sm:text-xs text-slate-500">
-                    Pobierz tabelę wszystkich kosztów remontu do pliku CSV (otwieranego w programie Excel lub Arkuszach Google).
-                </p>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <button
-                    type="button"
-                    id="exportCsvBtn"
-                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>Pobierz plik CSV (Excel)</span>
-                </button>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Modal potwierdzenia usunięcia pozycji (przyjazny na ekranach dotykowych) -->
-    <div id="deleteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-start gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </div>
-                <div class="min-w-0">
-                    <h3 class="text-base font-bold text-slate-900">Usunąć ten wydatek?</h3>
-                    <p id="deleteModalDesc" class="text-xs sm:text-sm text-slate-500 mt-1 break-words">
-                        Czy na pewno chcesz usunąć wybraną pozycję z tabeli? Łączny koszt zostanie od razu przeliczony.
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center justify-end gap-2.5 pt-1">
-                <button
-                    type="button"
-                    id="cancelDeleteBtn"
-                    class="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-                >
-                    Anuluj
-                </button>
-                <button
-                    type="button"
-                    id="confirmDeleteBtn"
-                    class="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm shadow-rose-600/20 transition-colors cursor-pointer"
-                >
-                    Usuń wydatek
-                </button>
-            </div>
-        </div>
+  <!-- Nagłówek z łącznym kosztem w prawym górnym rogu -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <h1>🏠 Budżet Remontowy</h1>
+        <button type="button" class="sync-badge" id="syncBadgeBtn" title="Kliknij, aby wymusić synchronizację">
+          <span class="dot" id="syncDot"></span>
+          <span id="syncText">Łączenie z bazą...</span>
+        </button>
+      </div>
+      <div class="total-box">
+        <span class="total-label">Łączny koszt</span>
+        <span class="total-amount" id="totalAmount">0,00 zł</span>
+      </div>
     </div>
+  </header>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <main class="container">
 
-        // Stan aplikacji
-        let expenses = [];
-        let editingExpenseId = null;
-        let pendingDeleteId = null;
-        let feedbackTimeout = null;
+    <!-- Formularz dodawania wydatku -->
+    <section class="card">
+      <div class="card-title">Dodaj nowy wydatek</div>
+      <form id="expenseForm" class="form-grid">
+        <div class="field">
+          <label for="titleInput">Tytuł wydatku</label>
+          <input type="text" id="titleInput" placeholder="np. Panele podłogowe + podkład" required />
+        </div>
+        <div class="field">
+          <label for="amountInput">Kwota (zł)</label>
+          <input type="text" id="amountInput" inputmode="decimal" placeholder="np. 1450,00" required />
+        </div>
+        <button type="submit" class="btn-primary" id="submitBtn">+ Dodaj</button>
+      </form>
 
-        // Zmienne chmurowej bazy danych
-        let db = null;
-        let auth = null;
-        let currentUser = null;
-        let isCloudActive = false;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'budzet-remontowy-app';
+      <div class="chips">
+        <button type="button" class="chip" data-tag="Materiały: ">🧱 Materiały</button>
+        <button type="button" class="chip" data-tag="Podłoga / Panele: ">🪵 Panele</button>
+        <button type="button" class="chip" data-tag="Farby i chemia: ">🎨 Farby</button>
+        <button type="button" class="chip" data-tag="Narzędzia: ">🛠️ Narzędzia</button>
+        <button type="button" class="chip" data-tag="Robocizna: ">👷 Robocizna</button>
+        <button type="button" class="chip" data-tag="Wyposażenie: ">🛋️ Wyposażenie</button>
+      </div>
+    </section>
 
-        // Referencje do elementów DOM
-        const totalCostDisplay = document.getElementById('totalCostDisplay');
-        const expenseForm = document.getElementById('expenseForm');
-        const expenseTitleInput = document.getElementById('expenseTitle');
-        const expenseAmountInput = document.getElementById('expenseAmount');
-        const submitBtnText = document.getElementById('submitBtnText');
-        const formHeadingText = document.getElementById('formHeadingText');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
-        const formFeedback = document.getElementById('formFeedback');
-        const formFeedbackText = document.getElementById('formFeedbackText');
-        const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
+    <!-- Tabela wydatków -->
+    <section class="card">
+      <div class="toolbar">
+        <input type="search" id="searchInput" class="search-input" placeholder="Szukaj wydatku..." />
+        <div class="toolbar-actions">
+          <button type="button" class="btn-secondary" id="refreshBtn">🔄 Odśwież</button>
+          <button type="button" class="btn-secondary" id="exportCsvBtn">📥 CSV</button>
+        </div>
+      </div>
 
-        const expensesTableBody = document.getElementById('expensesTableBody');
-        const expensesTableFooter = document.getElementById('expensesTableFooter');
-        const tableFooterTotal = document.getElementById('tableFooterTotal');
-        const emptyState = document.getElementById('emptyState');
-        const emptyStateTitle = document.getElementById('emptyStateTitle');
-        const emptyStateDesc = document.getElementById('emptyStateDesc');
-        const entryCounterPill = document.getElementById('entryCounterPill');
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nazwa wydatku</th>
+              <th>Data dodania</th>
+              <th style="text-align:right;">Kwota</th>
+              <th style="text-align:right;">Akcja</th>
+            </tr>
+          </thead>
+          <tbody id="expensesList"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state">Ładowanie wydatków...</div>
+      </div>
+    </section>
 
-        const searchInput = document.getElementById('searchInput');
-        const sortSelect = document.getElementById('sortSelect');
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
+  </main>
 
-        const statCount = document.getElementById('statCount');
-        const statAverage = document.getElementById('statAverage');
-        const statHighest = document.getElementById('statHighest');
+  <script>
+    // Twój adres bazy Firebase Realtime Database wpisany na stałe:
+    const FIREBASE_DB_URL = "https://budzet-remontowy-default-rtdb.europe-west1.firebasedatabase.app";
 
-        const deleteModal = document.getElementById('deleteModal');
-        const deleteModalDesc = document.getElementById('deleteModalDesc');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const LOCAL_KEY = "budzet_remontowy_wydatki_v1";
+    const MIGRATED_FLAG = "budzet_remontowy_migrated_v1";
 
-        const syncStatusDot = document.getElementById('syncStatusDot');
-        const syncStatusText = document.getElementById('syncStatusText');
+    let expenses = [];
+    let isSyncing = false;
 
-        // Formatowanie kwoty w PLN (np. "1 250,00 zł")
-        const currencyFormatter = new Intl.NumberFormat('pl-PL', {
-            style: 'currency',
-            currency: 'PLN',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+    const totalAmountEl = document.getElementById("totalAmount");
+    const expensesListEl = document.getElementById("expensesList");
+    const emptyStateEl = document.getElementById("emptyState");
+    const expenseForm = document.getElementById("expenseForm");
+    const titleInput = document.getElementById("titleInput");
+    const amountInput = document.getElementById("amountInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const searchInput = document.getElementById("searchInput");
+    const syncDot = document.getElementById("syncDot");
+    const syncText = document.getElementById("syncText");
+
+    // Odczyt z pamięci przeglądarki (przydatne przy pierwszej migracji lub braku zasięgu)
+    function loadFromLocalStorage() {
+      const possibleKeys = [
+        LOCAL_KEY,
+        "expenses",
+        "remont_expenses",
+        "remontWydatki",
+        "budget_expenses",
+        "wydatki_remontowe"
+      ];
+      for (const key of possibleKeys) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return parsed.map(item => ({
+                id: String(item.id || Date.now() + Math.random()),
+                title: item.title || item.name || item.tytul || "Wydatek",
+                amount: Number(item.amount ?? item.value ?? item.kwota ?? 0),
+                date: item.date || item.createdAt || item.data || new Date().toLocaleString("pl-PL")
+              }));
+            }
+          }
+        } catch (e) {}
+      }
+      return [];
+    }
+
+    function saveToLocalStorage(data) {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+    }
+
+    function updateSyncStatus(state, message) {
+      syncDot.classList.remove("online", "error");
+      if (state === "online") {
+        syncDot.classList.add("online");
+      } else if (state === "error") {
+        syncDot.classList.add("error");
+      }
+      syncText.textContent = message;
+    }
+
+    // Pobieranie danych z chmury Firebase
+    async function syncWithCloud() {
+      if (isSyncing) return;
+      isSyncing = true;
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/wydatki.json?t=${Date.now()}`, {
+          cache: "no-store"
         });
+        if (!res.ok) throw new Error("Błąd HTTP: " + res.status);
+        const cloudData = await res.json();
 
-        function formatPLN(value) {
-            return currencyFormatter.format(Number(value) || 0);
+        let cloudList = [];
+        if (Array.isArray(cloudData)) {
+          cloudList = cloudData.filter(Boolean);
+        } else if (cloudData && typeof cloudData === "object") {
+          cloudList = Object.values(cloudData).filter(Boolean);
         }
 
-        // Formatowanie daty dodania (czytelne na telefonie oraz na komputerze)
-        function formatDateParts(isoString) {
-            try {
-                const date = new Date(isoString);
-                if (isNaN(date.getTime())) {
-                    return { datePart: '—', timePart: '' };
-                }
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const year = date.getFullYear();
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                return {
-                    datePart: `${day}.${month}.${year}`,
-                    timePart: `${hours}:${minutes}`
-                };
-            } catch (err) {
-                return { datePart: '—', timePart: '' };
+        // Jednorazowe przeniesienie wcześniejszych wpisów z telefonu do chmury
+        const alreadyMigrated = localStorage.getItem(MIGRATED_FLAG);
+        if (!alreadyMigrated) {
+          const localData = loadFromLocalStorage();
+          if (localData.length > 0) {
+            const existingIds = new Set(cloudList.map(i => String(i.id)));
+            let addedAny = false;
+            for (const loc of localData) {
+              if (!existingIds.has(String(loc.id))) {
+                cloudList.push(loc);
+                addedAny = true;
+              }
             }
-        }
-
-        // Parsowanie wpisanej kwoty (obsługuje przecinki i kropki, np. "1 250,50" lub "1250.50")
-        function parseAmount(rawString) {
-            if (!rawString || typeof rawString !== 'string') return NaN;
-            const cleaned = rawString
-                .replace(/\s+/g, '')
-                .replace(/zł/gi, '')
-                .replace(/pln/gi, '')
-                .replace(',', '.');
-            if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) {
-                return NaN;
+            if (addedAny) {
+              await pushToCloud(cloudList);
             }
-            const parsed = parseFloat(cleaned);
-            return parsed > 0 && parsed <= 99999999 ? Math.round(parsed * 100) / 100 : NaN;
+          }
+          localStorage.setItem(MIGRATED_FLAG, "true");
         }
 
-        function showFeedback(message, type = 'error') {
-            if (feedbackTimeout) clearTimeout(feedbackTimeout);
-            formFeedback.classList.remove(
-                'hidden',
-                'bg-rose-50', 'text-rose-700', 'border', 'border-rose-200',
-                'bg-emerald-50', 'text-emerald-700', 'border-emerald-200'
-            );
+        expenses = cloudList;
+        saveToLocalStorage(expenses);
+        updateSyncStatus("online", "Zsynchronizowano (PC + Telefon)");
+        render();
+      } catch (err) {
+        expenses = loadFromLocalStorage();
+        updateSyncStatus("error", "Tryb offline – sprawdź reguły bazy");
+        render();
+      } finally {
+        isSyncing = false;
+      }
+    }
 
-            if (type === 'error') {
-                formFeedback.classList.add('bg-rose-50', 'text-rose-700', 'border', 'border-rose-200');
-            } else {
-                formFeedback.classList.add('bg-emerald-50', 'text-emerald-700', 'border', 'border-emerald-200');
-            }
-
-            formFeedbackText.textContent = message;
-            feedbackTimeout = setTimeout(() => {
-                formFeedback.classList.add('hidden');
-            }, 4000);
-        }
-
-        closeFeedbackBtn.addEventListener('click', () => {
-            formFeedback.classList.add('hidden');
+    // Zapisywanie listy wydatków do chmury Firebase
+    async function pushToCloud(newList) {
+      saveToLocalStorage(newList);
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/wydatki.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newList)
         });
+        if (!res.ok) throw new Error("Błąd zapisu");
+        updateSyncStatus("online", "Zapisano w chmurze");
+      } catch (err) {
+        updateSyncStatus("error", "Błąd zapisu w chmurze");
+      }
+    }
 
-        function setSyncIndicator(state) {
-            if (!syncStatusDot || !syncStatusText) return;
-            if (state === 'saving') {
-                syncStatusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse';
-                syncStatusText.textContent = 'Zapisywanie...';
-            } else {
-                syncStatusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
-                syncStatusText.textContent = 'Zapisano';
-            }
+    function formatCurrency(val) {
+      return Number(val || 0).toLocaleString("pl-PL", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " zł";
+    }
+
+    function render() {
+      const query = searchInput.value.trim().toLowerCase();
+      const total = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      totalAmountEl.textContent = formatCurrency(total);
+
+      const filtered = expenses
+        .slice()
+        .reverse()
+        .filter(item => (item.title || "").toLowerCase().includes(query));
+
+      expensesListEl.innerHTML = "";
+      if (filtered.length === 0) {
+        emptyStateEl.textContent = expenses.length === 0
+          ? "Brak zapisanych wydatków. Dodaj pierwszą pozycję powyżej!"
+          : "Brak wyników wyszukiwania.";
+        emptyStateEl.style.display = "block";
+        return;
+      }
+      emptyStateEl.style.display = "none";
+
+      for (const item of filtered) {
+        const tr = document.createElement("tr");
+
+        const tdTitle = document.createElement("td");
+        tdTitle.className = "expense-title";
+        tdTitle.textContent = item.title;
+
+        const tdDate = document.createElement("td");
+        tdDate.className = "expense-date";
+        tdDate.textContent = item.date;
+
+        const tdAmount = document.createElement("td");
+        tdAmount.className = "expense-amount";
+        tdAmount.textContent = formatCurrency(item.amount);
+
+        const tdAction = document.createElement("td");
+        tdAction.style.textAlign = "right";
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn-delete";
+        delBtn.textContent = "Usuń";
+        delBtn.onclick = async () => {
+          if (confirm(`Usunąć wydatek "${item.title}"?`)) {
+            expenses = expenses.filter(e => String(e.id) !== String(item.id));
+            render();
+            await pushToCloud(expenses);
+          }
+        };
+        tdAction.appendChild(delBtn);
+
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdDate);
+        tr.appendChild(tdAmount);
+        tr.appendChild(tdAction);
+        expensesListEl.appendChild(tr);
+      }
+    }
+
+    // Dodawanie nowego wydatku
+    expenseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      const rawAmount = amountInput.value.replace(/\s+/g, "").replace(",", ".");
+      const amount = parseFloat(rawAmount);
+
+      if (!title || isNaN(amount) || amount <= 0) {
+        alert("Wpisz poprawny tytuł oraz kwotę większą od zera.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Zapisywanie...";
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("pl-PL") + ", " + now.toLocaleTimeString("pl-PL", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      const newExpense = {
+        id: String(Date.now()),
+        title,
+        amount: Math.round(amount * 100) / 100,
+        date: dateStr
+      };
+
+      await syncWithCloud();
+      expenses.push(newExpense);
+      titleInput.value = "";
+      amountInput.value = "";
+      render();
+      await pushToCloud(expenses);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "+ Dodaj";
+    });
+
+    // Szybkie podpowiedzi kategorii
+    document.querySelectorAll(".chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tag = btn.getAttribute("data-tag");
+        if (!titleInput.value.startsWith(tag)) {
+          titleInput.value = tag + titleInput.value;
         }
+        titleInput.focus();
+      });
+    });
 
-        async function initCloudStorage() {
-            try {
-                if (typeof __firebase_config === 'undefined' || !__firebase_config) {
-                    return;
-                }
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
+    searchInput.addEventListener("input", render);
+    document.getElementById("refreshBtn").addEventListener("click", syncWithCloud);
+    document.getElementById("syncBadgeBtn").addEventListener("click", syncWithCloud);
 
-                // Reguła 3: Autoryzacja przed jakimkolwiek zapytaniem
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+    // Eksport do pliku CSV (Excel)
+    document.getElementById("exportCsvBtn").addEventListener("click", () => {
+      if (expenses.length === 0) {
+        alert("Brak wydatków do wyeksportowania.");
+        return;
+      }
+      const rows = [["Tytuł wydatku", "Kwota (PLN)", "Data dodania"]];
+      expenses.forEach(e => {
+        rows.push([
+          `"${String(e.title).replace(/"/g, '""')}"`,
+          String(e.amount).replace(".", ","),
+          `"${e.date}"`
+        ]);
+      });
+      const csvContent = "\uFEFF" + rows.map(r => r.join(";")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "wydatki-remontowe.csv";
+      a.click();
+    });
 
-                currentUser = auth.currentUser;
-                if (!currentUser) return;
+    // Start aplikacji + automatyczna synchronizacja przy powrocie do karty i co 10 sekund
+    syncWithCloud();
 
-                isCloudActive = true;
+    window.addEventListener("focus", syncWithCloud);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncWithCloud();
+    });
 
-                // Reguła 1: Ścieżka /artifacts/{appId}/users/{userId}/expenses
-                const expensesColRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses');
-
-                // Reguła 2: Proste zapytanie collection() i sortowanie w pamięci JS
-                onSnapshot(
-                    expensesColRef,
-                    (snapshot) => {
-                        const loaded = [];
-                        snapshot.forEach((docSnap) => {
-                            const data = docSnap.data();
-                            if (data && data.title && typeof data.amount === 'number') {
-                                loaded.push({
-                                    id: docSnap.id,
-                                    title: String(data.title),
-                                    amount: Number(data.amount),
-                                    createdAt: data.createdAt || new Date().toISOString()
-                                });
-                            }
-                        });
-                        expenses = loaded;
-                        setSyncIndicator('saved');
-                        renderUI();
-                    },
-                    (error) => {
-                        console.error('Błąd synchronizacji wydatków:', error);
-                    }
-                );
-            } catch (err) {
-                console.error('Inicjalizacja pamięci podręcznej:', err);
-            }
-        }
-
-        async function saveExpenseRecord(expenseObj) {
-            setSyncIndicator('saving');
-            const existingIndex = expenses.findIndex((item) => item.id === expenseObj.id);
-            if (existingIndex > -1) {
-                expenses[existingIndex] = expenseObj;
-            } else {
-                expenses.unshift(expenseObj);
-            }
-            renderUI();
-
-            if (isCloudActive && db && currentUser) {
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', expenseObj.id);
-                    await setDoc(docRef, {
-                        title: expenseObj.title,
-                        amount: expenseObj.amount,
-                        createdAt: expenseObj.createdAt
-                    });
-                    setSyncIndicator('saved');
-                } catch (err) {
-                    console.error('Błąd zapisu wydatku:', err);
-                }
-            } else {
-                setSyncIndicator('saved');
-            }
-        }
-
-        async function removeExpenseRecord(expenseId) {
-            setSyncIndicator('saving');
-            expenses = expenses.filter((item) => item.id !== expenseId);
-            renderUI();
-
-            if (isCloudActive && db && currentUser) {
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', expenseId);
-                    await deleteDoc(docRef);
-                    setSyncIndicator('saved');
-                } catch (err) {
-                    console.error('Błąd usuwania wydatku:', err);
-                }
-            } else {
-                setSyncIndicator('saved');
-            }
-        }
-
-        function getFilteredAndSortedExpenses() {
-            const queryText = (searchInput.value || '').trim().toLowerCase();
-            const sortMode = sortSelect.value;
-
-            const filtered = expenses.filter((item) =>
-                item.title.toLowerCase().includes(queryText)
-            );
-
-            filtered.sort((a, b) => {
-                if (sortMode === 'date-desc') {
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                }
-                if (sortMode === 'date-asc') {
-                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-                }
-                if (sortMode === 'amount-desc') {
-                    return b.amount - a.amount;
-                }
-                if (sortMode === 'amount-asc') {
-                    return a.amount - b.amount;
-                }
-                if (sortMode === 'title-asc') {
-                    return a.title.localeCompare(b.title, 'pl');
-                }
-                return 0;
-            });
-
-            return filtered;
-        }
-
-        // Funkcja bezpiecznego escapowania HTML
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
-        function formatPolishCount(count) {
-            if (count === 1) return '1 pozycja';
-            const mod10 = count % 10;
-            const mod100 = count % 100;
-            if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
-                return `${count} pozycje`;
-            }
-            return `${count} pozycji`;
-        }
-
-        function renderUI() {
-            // 1. Obliczenie łącznego kosztu wszystkich wydatków (prawy górny róg)
-            const totalSum = expenses.reduce((acc, item) => acc + item.amount, 0);
-            totalCostDisplay.textContent = formatPLN(totalSum);
-
-            // Lekka animacja pulsu przy aktualizacji sumy
-            totalCostDisplay.classList.add('scale-105');
-            setTimeout(() => totalCostDisplay.classList.remove('scale-105'), 160);
-
-            // 2. Statystyki pod tabelą
-            const totalCount = expenses.length;
-            statCount.textContent = String(totalCount);
-            statAverage.textContent = totalCount > 0 ? formatPLN(totalSum / totalCount) : '0,00 zł';
-            const highest = totalCount > 0 ? Math.max(...expenses.map((e) => e.amount)) : 0;
-            statHighest.textContent = formatPLN(highest);
-
-            entryCounterPill.textContent = formatPolishCount(totalCount);
-
-            // 3. Filtrowanie i sortowanie tabeli
-            const visibleExpenses = getFilteredAndSortedExpenses();
-            expensesTableBody.innerHTML = '';
-
-            if (visibleExpenses.length === 0) {
-                emptyState.classList.remove('hidden');
-                expensesTableFooter.classList.add('hidden');
-
-                if (totalCount > 0 && searchInput.value.trim() !== '') {
-                    emptyStateTitle.textContent = 'Brak pasujących wydatków';
-                    emptyStateDesc.textContent = 'Spróbuj wpisać inną frazę w polu wyszukiwania powyżej.';
-                } else {
-                    emptyStateTitle.textContent = 'Brak zapisanych wydatków';
-                    emptyStateDesc.innerHTML = 'Wpisz powyżej tytuł wydatku oraz kwotę i naciśnij przycisk <strong>Dodaj</strong>, aby utworzyć pierwszy wpis w tabeli.';
-                }
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-            expensesTableFooter.classList.remove('hidden');
-
-            const filteredSum = visibleExpenses.reduce((acc, item) => acc + item.amount, 0);
-            tableFooterTotal.textContent = formatPLN(filteredSum);
-
-            visibleExpenses.forEach((expense, idx) => {
-                const tr = document.createElement('tr');
-                tr.className = 'expense-row-enter hover:bg-amber-50/40 transition-colors group';
-
-                const { datePart, timePart } = formatDateParts(expense.createdAt);
-
-                tr.innerHTML = `
-                    <td class="hidden sm:table-cell py-3.5 pl-5 pr-2 text-center font-semibold text-slate-400 tabular-nums">
-                        ${idx + 1}.
-                    </td>
-                    <td class="py-3 pl-3 pr-1.5 sm:py-3.5 sm:px-4 font-semibold text-slate-900 break-words leading-snug">
-                        ${escapeHtml(expense.title)}
-                    </td>
-                    <td class="py-3 px-1.5 sm:py-3.5 sm:px-4 text-right font-extrabold text-slate-900 tabular-nums whitespace-nowrap">
-                        ${formatPLN(expense.amount)}
-                    </td>
-                    <td class="py-3 px-1.5 sm:py-3.5 sm:px-4 text-center text-[11px] sm:text-xs text-slate-500 tabular-nums leading-tight">
-                        <span class="block font-medium text-slate-700">${datePart}</span>
-                        <span class="block text-[10px] sm:text-[11px] text-slate-400">${timePart}</span>
-                    </td>
-                    <td class="py-3 pl-1 pr-2.5 sm:py-3.5 sm:pl-2 sm:pr-5 text-right">
-                        <div class="inline-flex items-center justify-end gap-1">
-                            <button
-                                type="button"
-                                data-edit-id="${expense.id}"
-                                title="Edytuj wydatek"
-                                aria-label="Edytuj ${escapeHtml(expense.title)}"
-                                class="hidden sm:inline-flex p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            </button>
-                            <button
-                                type="button"
-                                data-delete-id="${expense.id}"
-                                title="Usuń wydatek"
-                                aria-label="Usuń ${escapeHtml(expense.title)}"
-                                class="min-w-[36px] min-h-[36px] sm:min-w-[38px] sm:min-h-[38px] inline-flex items-center justify-center rounded-xl text-rose-500 hover:text-rose-700 bg-rose-50/70 hover:bg-rose-100 active:bg-rose-200 transition-colors cursor-pointer"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
-
-                expensesTableBody.appendChild(tr);
-            });
-        }
-
-        // Obsługa zatwierdzenia formularza przyciskiem "Dodaj"
-        expenseForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const title = expenseTitleInput.value.trim();
-            const amount = parseAmount(expenseAmountInput.value);
-
-            if (!title) {
-                showFeedback('Wpisz tytuł wydatku (np. Farba do salonu, Panele podłogowe).', 'error');
-                expenseTitleInput.focus();
-                return;
-            }
-
-            if (isNaN(amount)) {
-                showFeedback('Wpisz poprawną kwotę większą od zera (np. 150 lub 249,99).', 'error');
-                expenseAmountInput.focus();
-                return;
-            }
-
-            if (editingExpenseId) {
-                const existing = expenses.find((item) => item.id === editingExpenseId);
-                const updatedExpense = {
-                    id: editingExpenseId,
-                    title,
-                    amount,
-                    createdAt: existing ? existing.createdAt : new Date().toISOString()
-                };
-                resetEditMode();
-                await saveExpenseRecord(updatedExpense);
-                showFeedback(`Zaktualizowano wydatek: "${title}" (${formatPLN(amount)}).`, 'success');
-            } else {
-                const newExpense = {
-                    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `exp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-                    title,
-                    amount,
-                    createdAt: new Date().toISOString()
-                };
-                expenseForm.reset();
-                await saveExpenseRecord(newExpense);
-                showFeedback(`Dodano wydatek: "${title}" (${formatPLN(amount)}).`, 'success');
-            }
-        });
-
-        // Szybkie tagi podpowiedzi tytułu wydatku
-        document.querySelectorAll('.quick-chip').forEach((chip) => {
-            chip.addEventListener('click', () => {
-                const suggestedTitle = chip.getAttribute('data-quick-title');
-                if (suggestedTitle) {
-                    expenseTitleInput.value = suggestedTitle;
-                    expenseAmountInput.focus();
-                }
-            });
-        });
-
-        function startEditExpense(expenseId) {
-            const target = expenses.find((item) => item.id === expenseId);
-            if (!target) return;
-
-            editingExpenseId = target.id;
-            expenseTitleInput.value = target.title;
-            expenseAmountInput.value = target.amount.toFixed(2).replace('.', ',');
-            submitBtnText.textContent = 'Zapisz';
-            formHeadingText.textContent = 'Edytuj wybrany wydatek';
-            cancelEditBtn.classList.remove('hidden');
-            expenseTitleInput.focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function resetEditMode() {
-            editingExpenseId = null;
-            expenseForm.reset();
-            submitBtnText.textContent = 'Dodaj';
-            formHeadingText.textContent = 'Nowy wydatek remontowy';
-            cancelEditBtn.classList.add('hidden');
-        }
-
-        cancelEditBtn.addEventListener('click', resetEditMode);
-
-        // Delegacja zdarzeń w tabeli (Usuń / Edytuj)
-        expensesTableBody.addEventListener('click', (event) => {
-            const deleteBtn = event.target.closest('[data-delete-id]');
-            if (deleteBtn) {
-                const id = deleteBtn.getAttribute('data-delete-id');
-                const target = expenses.find((item) => item.id === id);
-                if (!target) return;
-
-                pendingDeleteId = id;
-                deleteModalDesc.textContent = `Czy na pewno chcesz usunąć "${target.title}" (${formatPLN(target.amount)}) z listy wydatków?`;
-                deleteModal.classList.remove('hidden');
-                deleteModal.classList.add('flex');
-                return;
-            }
-
-            const editBtn = event.target.closest('[data-edit-id]');
-            if (editBtn) {
-                const id = editBtn.getAttribute('data-edit-id');
-                startEditExpense(id);
-            }
-        });
-
-        function closeDeleteModal() {
-            pendingDeleteId = null;
-            deleteModal.classList.add('hidden');
-            deleteModal.classList.remove('flex');
-        }
-
-        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        deleteModal.addEventListener('click', (event) => {
-            if (event.target === deleteModal) closeDeleteModal();
-        });
-
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (!pendingDeleteId) return;
-            const idToRemove = pendingDeleteId;
-            if (editingExpenseId === idToRemove) {
-                resetEditMode();
-            }
-            closeDeleteModal();
-            await removeExpenseRecord(idToRemove);
-            showFeedback('Wydatek został usunięty, a łączny koszt zaktualizowany.', 'success');
-        });
-
-        // Wyszukiwarka i zmiana sortowania
-        searchInput.addEventListener('input', renderUI);
-        sortSelect.addEventListener('change', renderUI);
-
-        // Eksport tabeli do pliku CSV (z kodowaniem UTF-8 BOM dla polskich znaków w Excelu)
-        exportCsvBtn.addEventListener('click', () => {
-            if (expenses.length === 0) {
-                showFeedback('Tabela jest pusta — dodaj przynajmniej jeden wydatek przed eksportem.', 'error');
-                return;
-            }
-
-            const sorted = getFilteredAndSortedExpenses();
-            const rows = [
-                ['Lp.', 'Tytuł wydatku', 'Kwota (PLN)', 'Data dodania', 'Godzina']
-            ];
-
-            sorted.forEach((item, index) => {
-                const { datePart, timePart } = formatDateParts(item.createdAt);
-                const safeTitle = `"${item.title.replace(/"/g, '""')}"`;
-                const formattedAmount = item.amount.toFixed(2).replace('.', ',');
-                rows.push([
-                    String(index + 1),
-                    safeTitle,
-                    `"${formattedAmount}"`,
-                    datePart,
-                    timePart
-                ]);
-            });
-
-            const totalSum = sorted.reduce((acc, item) => acc + item.amount, 0);
-            rows.push(['', '"ŁĄCZNY KOSZT"', `"${totalSum.toFixed(2).replace('.', ',')}"`, '', '']);
-
-            const csvContent = '\uFEFF' + rows.map((r) => r.join(';')).join('\r\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement('a');
-            const today = new Date().toISOString().slice(0, 10);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `budzet-remontowy-${today}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            showFeedback('Pobrano plik CSV z zestawieniem wydatków.', 'success');
-        });
-
-        // Inicjalizacja aplikacji przy starcie
-        renderUI();
-        initCloudStorage();
-    </script>
+    setInterval(() => {
+      if (!document.hidden) syncWithCloud();
+    }, 10000);
+  </script>
 </body>
 </html>
