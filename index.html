@@ -67,6 +67,13 @@
       gap: 8px;
     }
 
+    .brand-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     .sync-badge {
       display: inline-flex;
       align-items: center;
@@ -145,7 +152,6 @@
       transition: border-color 0.25s, box-shadow 0.25s;
     }
 
-    /* Wygląd karty formularza podczas edycji */
     .card.editing-mode {
       border-color: var(--warning);
       box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2), 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -285,6 +291,15 @@
 
     .btn-primary.save-mode:hover {
       background: #fbbf24;
+    }
+
+    .btn-primary.danger-mode {
+      background: var(--danger);
+      color: #ffffff;
+    }
+
+    .btn-primary.danger-mode:hover {
+      background: #dc2626;
     }
 
     .btn-primary:active {
@@ -470,19 +485,136 @@
       color: var(--muted);
       font-size: 0.9rem;
     }
+
+    /* Ekran blokady hasłem oraz Modal usuwania */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .modal-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .modal-desc {
+      font-size: 0.86rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .error-msg {
+      color: #f87171;
+      font-size: 0.82rem;
+      font-weight: 600;
+      min-height: 1.2em;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
+
+  <!-- 1. EKRAN BLOKADY PRZY WEJŚCIU NA STRONĘ -->
+  <div class="overlay" id="lockOverlay">
+    <form class="modal-box" id="unlockForm">
+      <div class="modal-icon">🔒</div>
+      <div class="modal-title">Budżet Remontowy</div>
+      <div class="modal-desc">Podaj hasło dostępu, aby wyświetlić i edytować wydatki.</div>
+      <div class="field">
+        <input type="password" id="accessPasswordInput" placeholder="Wpisz hasło dostępu..." autocomplete="current-password" required />
+      </div>
+      <label class="remember-row">
+        <input type="checkbox" id="rememberDeviceCheckbox" checked />
+        <span>Zapamiętaj mnie na tym urządzeniu</span>
+      </label>
+      <div class="error-msg" id="unlockError"></div>
+      <button type="submit" class="btn-primary">Odblokuj stronę</button>
+    </form>
+  </div>
+
+  <!-- 2. OKIENKO Z HASŁEM PRZY USUWANIU WYDATKU -->
+  <div class="overlay hidden" id="deleteModal">
+    <form class="modal-box" id="deleteConfirmForm">
+      <div class="modal-icon">🗑️</div>
+      <div class="modal-title">Potwierdź usunięcie</div>
+      <div class="modal-desc" id="deleteItemName">Czy na pewno chcesz usunąć ten wydatek?</div>
+      <div class="field">
+        <input type="password" id="deletePasswordInput" placeholder="Podaj hasło usuwania..." required />
+      </div>
+      <div class="error-msg" id="deleteError"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel visible" id="cancelDeleteBtn" style="flex:1;">Anuluj</button>
+        <button type="submit" class="btn-primary danger-mode" style="flex:1;">Usuń wpis</button>
+      </div>
+    </form>
+  </div>
 
   <!-- Nagłówek z łącznym kosztem w prawym górnym rogu -->
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
         <h1>🏠 Budżet Remontowy</h1>
-        <button type="button" class="sync-badge" id="syncBadgeBtn" title="Kliknij, aby wymusić synchronizację">
-          <span class="dot" id="syncDot"></span>
-          <span id="syncText">Łączenie z bazą...</span>
-        </button>
+        <div class="brand-badges">
+          <button type="button" class="sync-badge" id="syncBadgeBtn" title="Kliknij, aby wymusić synchronizację">
+            <span class="dot" id="syncDot"></span>
+            <span id="syncText">Łączenie z bazą...</span>
+          </button>
+          <button type="button" class="sync-badge" id="lockPageBtn" title="Zablokuj stronę hasłem">
+            🔒 Zablokuj
+          </button>
+        </div>
       </div>
       <div class="total-box">
         <span class="total-label">Łączny koszt</span>
@@ -546,22 +678,31 @@
           </thead>
           <tbody id="expensesList"></tbody>
         </table>
-        <div id="emptyState" class="empty-state">Ładowanie wydatków...</div>
+        <div id="emptyState" class="empty-state">Zablokowano – podaj hasło.</div>
       </div>
     </section>
 
   </main>
 
   <script>
-    // Twój adres bazy Firebase Realtime Database wpisany na stałe:
+    // =========================================================================
+    // USTAWIENIA HASEŁ (Zmień "1234" na własne hasła przed zapisaniem na GitHubie)
+    // =========================================================================
+    const ACCESS_PASSWORD = "7757"; // Hasło wymagane przy wejściu na stronę
+    const DELETE_PASSWORD = "7757"; // Hasło wymagane przy usuwaniu wydatku
+
+    // Twój adres bazy Firebase Realtime Database:
     const FIREBASE_DB_URL = "https://budzet-remontowy-default-rtdb.europe-west1.firebasedatabase.app";
 
     const LOCAL_KEY = "budzet_remontowy_wydatki_v1";
     const MIGRATED_FLAG = "budzet_remontowy_migrated_v1";
+    const AUTH_STORAGE_KEY = "budzet_remontowy_unlocked_v1";
 
     let expenses = [];
     let isSyncing = false;
     let editingId = null;
+    let pendingDeleteItem = null;
+    let isUnlocked = false;
 
     const totalAmountEl = document.getElementById("totalAmount");
     const expensesListEl = document.getElementById("expensesList");
@@ -576,6 +717,21 @@
     const searchInput = document.getElementById("searchInput");
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
+
+    // Elementy blokady wejścia i usuwania
+    const lockOverlay = document.getElementById("lockOverlay");
+    const unlockForm = document.getElementById("unlockForm");
+    const accessPasswordInput = document.getElementById("accessPasswordInput");
+    const rememberDeviceCheckbox = document.getElementById("rememberDeviceCheckbox");
+    const unlockError = document.getElementById("unlockError");
+    const lockPageBtn = document.getElementById("lockPageBtn");
+
+    const deleteModal = document.getElementById("deleteModal");
+    const deleteConfirmForm = document.getElementById("deleteConfirmForm");
+    const deleteItemName = document.getElementById("deleteItemName");
+    const deletePasswordInput = document.getElementById("deletePasswordInput");
+    const deleteError = document.getElementById("deleteError");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
 
     function loadFromLocalStorage() {
       const possibleKeys = [
@@ -619,7 +775,85 @@
       syncText.textContent = message;
     }
 
-    // Rozpoczęcie edycji wybranego wydatku
+    // =========================================================================
+    // OBSŁUGA HASŁA WEJŚCIA NA STRONĘ
+    // =========================================================================
+    function unlockApp() {
+      isUnlocked = true;
+      lockOverlay.classList.add("hidden");
+      unlockError.textContent = "";
+      accessPasswordInput.value = "";
+      syncWithCloud();
+    }
+
+    unlockForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (accessPasswordInput.value === ACCESS_PASSWORD) {
+        if (rememberDeviceCheckbox.checked) {
+          localStorage.setItem(AUTH_STORAGE_KEY, ACCESS_PASSWORD);
+        } else {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+        }
+        unlockApp();
+      } else {
+        unlockError.textContent = "Nieprawidłowe hasło dostępu!";
+        accessPasswordInput.select();
+      }
+    });
+
+    lockPageBtn.addEventListener("click", () => {
+      isUnlocked = false;
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      lockOverlay.classList.remove("hidden");
+      accessPasswordInput.value = "";
+      setTimeout(() => accessPasswordInput.focus(), 100);
+    });
+
+    // =========================================================================
+    // OBSŁUGA HASŁA PRZY USUWANIU WYDATKU
+    // =========================================================================
+    function openDeleteModal(item) {
+      pendingDeleteItem = item;
+      deleteItemName.textContent = `Wydatek: "${item.title}" (${formatCurrency(item.amount)})`;
+      deletePasswordInput.value = "";
+      deleteError.textContent = "";
+      deleteModal.classList.remove("hidden");
+      setTimeout(() => deletePasswordInput.focus(), 100);
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteItem = null;
+      deletePasswordInput.value = "";
+      deleteError.textContent = "";
+      deleteModal.classList.add("hidden");
+    }
+
+    cancelDeleteBtn.addEventListener("click", closeDeleteModal);
+
+    deleteConfirmForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!pendingDeleteItem) return;
+
+      if (deletePasswordInput.value !== DELETE_PASSWORD) {
+        deleteError.textContent = "Błędne hasło usuwania!";
+        deletePasswordInput.select();
+        return;
+      }
+
+      const itemToDelete = pendingDeleteItem;
+      closeDeleteModal();
+
+      if (editingId && String(itemToDelete.id) === String(editingId)) {
+        cancelEdit();
+      }
+      expenses = expenses.filter(exp => String(exp.id) !== String(itemToDelete.id));
+      render();
+      await pushToCloud(expenses);
+    });
+
+    // =========================================================================
+    // EDYCJA I SYNCHRONIZACJA Z FIREBASE
+    // =========================================================================
     function startEdit(item) {
       editingId = String(item.id);
       titleInput.value = item.title;
@@ -636,7 +870,6 @@
       setTimeout(() => titleInput.focus(), 250);
     }
 
-    // Wyjście z trybu edycji
     function cancelEdit() {
       editingId = null;
       titleInput.value = "";
@@ -651,9 +884,8 @@
       render();
     }
 
-    // Pobieranie danych z chmury Firebase
     async function syncWithCloud() {
-      if (isSyncing) return;
+      if (!isUnlocked || isSyncing) return;
       isSyncing = true;
 
       try {
@@ -670,7 +902,6 @@
           cloudList = Object.values(cloudData).filter(Boolean);
         }
 
-        // Jednorazowe przeniesienie wcześniejszych wpisów z telefonu do chmury
         const alreadyMigrated = localStorage.getItem(MIGRATED_FLAG);
         if (!alreadyMigrated) {
           const localData = loadFromLocalStorage();
@@ -703,7 +934,6 @@
       }
     }
 
-    // Zapisywanie listy wydatków do chmury Firebase
     async function pushToCloud(newList) {
       saveToLocalStorage(newList);
       try {
@@ -780,16 +1010,7 @@
         delBtn.type = "button";
         delBtn.className = "btn-delete";
         delBtn.textContent = "Usuń";
-        delBtn.onclick = async () => {
-          if (confirm(`Usunąć wydatek "${item.title}"?`)) {
-            if (editingId && String(item.id) === String(editingId)) {
-              cancelEdit();
-            }
-            expenses = expenses.filter(e => String(e.id) !== String(item.id));
-            render();
-            await pushToCloud(expenses);
-          }
-        };
+        delBtn.onclick = () => openDeleteModal(item);
 
         actionsWrap.appendChild(editBtn);
         actionsWrap.appendChild(delBtn);
@@ -803,9 +1024,10 @@
       }
     }
 
-    // Dodawanie nowego wydatku lub zapisywanie edytowanego
     expenseForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!isUnlocked) return;
+
       const title = titleInput.value.trim();
       const rawAmount = amountInput.value.replace(/\s+/g, "").replace(",", ".");
       const amount = parseFloat(rawAmount);
@@ -824,7 +1046,6 @@
       await syncWithCloud();
 
       if (currentEditingId) {
-        // Aktualizacja istniejącego wydatku (zachowuje oryginalną datę dodania)
         const index = expenses.findIndex(item => String(item.id) === String(currentEditingId));
         if (index !== -1) {
           expenses[index].title = title;
@@ -832,7 +1053,6 @@
         }
         cancelEdit();
       } else {
-        // Dodawanie nowego wydatku
         const now = new Date();
         const dateStr = now.toLocaleDateString("pl-PL") + ", " + now.toLocaleTimeString("pl-PL", {
           hour: "2-digit",
@@ -859,7 +1079,6 @@
 
     cancelEditBtn.addEventListener("click", cancelEdit);
 
-    // Szybkie podpowiedzi kategorii
     document.querySelectorAll(".chip").forEach(btn => {
       btn.addEventListener("click", () => {
         const tag = btn.getAttribute("data-tag");
@@ -874,7 +1093,6 @@
     document.getElementById("refreshBtn").addEventListener("click", syncWithCloud);
     document.getElementById("syncBadgeBtn").addEventListener("click", syncWithCloud);
 
-    // Eksport do pliku CSV (Excel)
     document.getElementById("exportCsvBtn").addEventListener("click", () => {
       if (expenses.length === 0) {
         alert("Brak wydatków do wyeksportowania.");
@@ -897,8 +1115,15 @@
       a.click();
     });
 
-    // Start aplikacji + automatyczna synchronizacja
-    syncWithCloud();
+    // Sprawdzenie przy starcie, czy urządzenie było już odblokowane
+    (function initAuth() {
+      const savedPass = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (savedPass === ACCESS_PASSWORD) {
+        unlockApp();
+      } else {
+        setTimeout(() => accessPasswordInput.focus(), 100);
+      }
+    })();
 
     window.addEventListener("focus", syncWithCloud);
     document.addEventListener("visibilitychange", () => {
@@ -906,7 +1131,7 @@
     });
 
     setInterval(() => {
-      if (!document.hidden && !editingId) syncWithCloud();
+      if (!document.hidden && !editingId && isUnlocked) syncWithCloud();
     }, 10000);
   </script>
 </body>
