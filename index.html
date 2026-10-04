@@ -142,6 +142,13 @@
       border-radius: 16px;
       padding: 18px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+
+    /* Wygląd karty formularza podczas edycji */
+    .card.editing-mode {
+      border-color: var(--warning);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2), 0 4px 20px rgba(0, 0, 0, 0.3);
     }
 
     .card-title {
@@ -153,11 +160,31 @@
       align-items: center;
     }
 
-    /* Formularz dodawania */
+    .editing-badge {
+      display: none;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--warning);
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    .card.editing-mode .editing-badge {
+      display: inline-block;
+    }
+
+    /* Formularz dodawania / edycji */
     .form-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
     }
 
     @media (min-width: 640px) {
@@ -201,6 +228,10 @@
       border-color: var(--accent);
     }
 
+    .card.editing-mode .field input:focus {
+      border-color: var(--warning);
+    }
+
     .chips {
       display: flex;
       flex-wrap: wrap;
@@ -225,13 +256,14 @@
     }
 
     .btn-primary {
+      flex: 1;
       background: var(--accent);
       color: #0f172a;
       font-weight: 700;
       font-size: 16px;
       border: none;
       border-radius: 10px;
-      padding: 12px 22px;
+      padding: 12px 20px;
       cursor: pointer;
       transition: background 0.2s, transform 0.1s, opacity 0.2s;
       height: 45px;
@@ -239,10 +271,20 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .btn-primary:hover {
       background: #7dd3fc;
+    }
+
+    .btn-primary.save-mode {
+      background: var(--warning);
+      color: #0f172a;
+    }
+
+    .btn-primary.save-mode:hover {
+      background: #fbbf24;
     }
 
     .btn-primary:active {
@@ -252,6 +294,31 @@
     .btn-primary:disabled {
       opacity: 0.6;
       cursor: wait;
+    }
+
+    .btn-cancel {
+      display: none;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      height: 45px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    .btn-cancel.visible {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* Pasek narzędzi nad tabelą */
@@ -326,6 +393,10 @@
       border-bottom: none;
     }
 
+    tr.editing-row {
+      background: rgba(245, 158, 11, 0.1);
+    }
+
     .expense-title {
       font-weight: 600;
       color: var(--text);
@@ -344,6 +415,29 @@
       text-align: right;
     }
 
+    .row-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    .btn-edit {
+      background: rgba(56, 189, 248, 0.12);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-edit:hover {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
     .btn-delete {
       background: rgba(239, 68, 68, 0.12);
       color: #f87171;
@@ -352,11 +446,22 @@
       border-radius: 8px;
       font-size: 0.78rem;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .btn-delete:hover {
       background: var(--danger);
       color: #fff;
+    }
+
+    @media (max-width: 480px) {
+      td, th {
+        padding: 10px 6px;
+      }
+      .btn-edit, .btn-delete {
+        padding: 6px 8px;
+        font-size: 0.74rem;
+      }
     }
 
     .empty-state {
@@ -388,9 +493,12 @@
 
   <main class="container">
 
-    <!-- Formularz dodawania wydatku -->
-    <section class="card">
-      <div class="card-title">Dodaj nowy wydatek</div>
+    <!-- Formularz dodawania / edycji wydatku -->
+    <section class="card" id="formCard">
+      <div class="card-title">
+        <span id="formTitle">Dodaj nowy wydatek</span>
+        <span class="editing-badge">Tryb edycji</span>
+      </div>
       <form id="expenseForm" class="form-grid">
         <div class="field">
           <label for="titleInput">Tytuł wydatku</label>
@@ -400,7 +508,10 @@
           <label for="amountInput">Kwota (zł)</label>
           <input type="text" id="amountInput" inputmode="decimal" placeholder="np. 1450,00" required />
         </div>
-        <button type="submit" class="btn-primary" id="submitBtn">+ Dodaj</button>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="submitBtn">+ Dodaj</button>
+          <button type="button" class="btn-cancel" id="cancelEditBtn">Anuluj</button>
+        </div>
       </form>
 
       <div class="chips">
@@ -450,19 +561,22 @@
 
     let expenses = [];
     let isSyncing = false;
+    let editingId = null;
 
     const totalAmountEl = document.getElementById("totalAmount");
     const expensesListEl = document.getElementById("expensesList");
     const emptyStateEl = document.getElementById("emptyState");
+    const formCard = document.getElementById("formCard");
+    const formTitle = document.getElementById("formTitle");
     const expenseForm = document.getElementById("expenseForm");
     const titleInput = document.getElementById("titleInput");
     const amountInput = document.getElementById("amountInput");
     const submitBtn = document.getElementById("submitBtn");
+    const cancelEditBtn = document.getElementById("cancelEditBtn");
     const searchInput = document.getElementById("searchInput");
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
-    // Odczyt z pamięci przeglądarki (przydatne przy pierwszej migracji lub braku zasięgu)
     function loadFromLocalStorage() {
       const possibleKeys = [
         LOCAL_KEY,
@@ -503,6 +617,38 @@
         syncDot.classList.add("error");
       }
       syncText.textContent = message;
+    }
+
+    // Rozpoczęcie edycji wybranego wydatku
+    function startEdit(item) {
+      editingId = String(item.id);
+      titleInput.value = item.title;
+      amountInput.value = String(item.amount).replace(".", ",");
+
+      formCard.classList.add("editing-mode");
+      formTitle.textContent = "Edytuj wydatek";
+      submitBtn.textContent = "💾 Zapisz";
+      submitBtn.classList.add("save-mode");
+      cancelEditBtn.classList.add("visible");
+
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => titleInput.focus(), 250);
+    }
+
+    // Wyjście z trybu edycji
+    function cancelEdit() {
+      editingId = null;
+      titleInput.value = "";
+      amountInput.value = "";
+
+      formCard.classList.remove("editing-mode");
+      formTitle.textContent = "Dodaj nowy wydatek";
+      submitBtn.textContent = "+ Dodaj";
+      submitBtn.classList.remove("save-mode");
+      cancelEditBtn.classList.remove("visible");
+
+      render();
     }
 
     // Pobieranie danych z chmury Firebase
@@ -602,6 +748,9 @@
 
       for (const item of filtered) {
         const tr = document.createElement("tr");
+        if (editingId && String(item.id) === String(editingId)) {
+          tr.className = "editing-row";
+        }
 
         const tdTitle = document.createElement("td");
         tdTitle.className = "expense-title";
@@ -617,17 +766,34 @@
 
         const tdAction = document.createElement("td");
         tdAction.style.textAlign = "right";
+
+        const actionsWrap = document.createElement("div");
+        actionsWrap.className = "row-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn-edit";
+        editBtn.textContent = "Edytuj";
+        editBtn.onclick = () => startEdit(item);
+
         const delBtn = document.createElement("button");
+        delBtn.type = "button";
         delBtn.className = "btn-delete";
         delBtn.textContent = "Usuń";
         delBtn.onclick = async () => {
           if (confirm(`Usunąć wydatek "${item.title}"?`)) {
+            if (editingId && String(item.id) === String(editingId)) {
+              cancelEdit();
+            }
             expenses = expenses.filter(e => String(e.id) !== String(item.id));
             render();
             await pushToCloud(expenses);
           }
         };
-        tdAction.appendChild(delBtn);
+
+        actionsWrap.appendChild(editBtn);
+        actionsWrap.appendChild(delBtn);
+        tdAction.appendChild(actionsWrap);
 
         tr.appendChild(tdTitle);
         tr.appendChild(tdDate);
@@ -637,7 +803,7 @@
       }
     }
 
-    // Dodawanie nowego wydatku
+    // Dodawanie nowego wydatku lub zapisywanie edytowanego
     expenseForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = titleInput.value.trim();
@@ -649,32 +815,49 @@
         return;
       }
 
+      const roundedAmount = Math.round(amount * 100) / 100;
+      const currentEditingId = editingId;
+
       submitBtn.disabled = true;
       submitBtn.textContent = "Zapisywanie...";
 
-      const now = new Date();
-      const dateStr = now.toLocaleDateString("pl-PL") + ", " + now.toLocaleTimeString("pl-PL", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-
-      const newExpense = {
-        id: String(Date.now()),
-        title,
-        amount: Math.round(amount * 100) / 100,
-        date: dateStr
-      };
-
       await syncWithCloud();
-      expenses.push(newExpense);
-      titleInput.value = "";
-      amountInput.value = "";
+
+      if (currentEditingId) {
+        // Aktualizacja istniejącego wydatku (zachowuje oryginalną datę dodania)
+        const index = expenses.findIndex(item => String(item.id) === String(currentEditingId));
+        if (index !== -1) {
+          expenses[index].title = title;
+          expenses[index].amount = roundedAmount;
+        }
+        cancelEdit();
+      } else {
+        // Dodawanie nowego wydatku
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("pl-PL") + ", " + now.toLocaleTimeString("pl-PL", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        expenses.push({
+          id: String(Date.now()),
+          title,
+          amount: roundedAmount,
+          date: dateStr
+        });
+
+        titleInput.value = "";
+        amountInput.value = "";
+      }
+
       render();
       await pushToCloud(expenses);
 
       submitBtn.disabled = false;
-      submitBtn.textContent = "+ Dodaj";
+      submitBtn.textContent = editingId ? "💾 Zapisz" : "+ Dodaj";
     });
+
+    cancelEditBtn.addEventListener("click", cancelEdit);
 
     // Szybkie podpowiedzi kategorii
     document.querySelectorAll(".chip").forEach(btn => {
@@ -714,7 +897,7 @@
       a.click();
     });
 
-    // Start aplikacji + automatyczna synchronizacja przy powrocie do karty i co 10 sekund
+    // Start aplikacji + automatyczna synchronizacja
     syncWithCloud();
 
     window.addEventListener("focus", syncWithCloud);
@@ -723,7 +906,7 @@
     });
 
     setInterval(() => {
-      if (!document.hidden) syncWithCloud();
+      if (!document.hidden && !editingId) syncWithCloud();
     }, 10000);
   </script>
 </body>
